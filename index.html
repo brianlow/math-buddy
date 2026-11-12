@@ -676,7 +676,7 @@ function stats(){
 }
 const needXP=l=>40+20*(l-1);
 
-/* ---------- sound & voice ---------- */
+/* ---------- sound ---------- */
 let actx;
 function tone(fs,dur=.12,type='sine',vol=.16){
   if(!S.sound)return;
@@ -688,8 +688,6 @@ function tone(fs,dur=.12,type='sine',vol=.16){
 const sfx={ok:()=>tone([660,880]),no:()=>tone([320,250],.14,'triangle',.12),gift:()=>tone([523,659,784,1047],.11),tap:()=>tone([520],.05,'sine',.08),
   coin:()=>tone([988,1319],.07,'square',.05),zap:()=>tone([900,600,300],.06,'sawtooth',.06),lvl:()=>tone([523,659,784,1047,1319],.1,'triangle',.14),
   cheer:()=>tone([440,660,880],.07,'triangle',.12),dig:()=>tone([180,140,220],.08,'square',.06)};
-function say(t){if(!S.sound)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(t).replace(/×/g,' times ').replace(/−/g,' minus '));u.rate=.88;u.pitch=1.15;speechSynthesis.speak(u)}catch(e){}}
-const hush=()=>{try{speechSynthesis.cancel()}catch(e){}};
 
 /* ---------- map art ---------- */
 function mapArt(){
@@ -936,32 +934,30 @@ function setSpeaker(who){
   else{$('dlgFace').innerHTML=who==='me'?buddySVG(S.wear):face(who);$('dlgName').textContent=who==='me'?S.name:WHO[who]}
   $('dlg').hidden=false;
 }
-function bindRead(t){const b=$('dlgBtns').querySelector('[data-read]');if(b)b.onclick=()=>say(t)}
 function line(who,text,o={}){
   return new Promise(res=>{
     setSpeaker(who);const t=fill(text);$('dlgText').textContent=t;$('dlgExtra').innerHTML=o.extra||'';
-    $('dlgBtns').innerHTML=`<button class="pill ghost" type="button" data-read>Read it to me</button><button class="pill sun choice" type="button" data-next>${esc(o.btn||'Next')} ›</button>`;
-    bindRead(t);$('dlgBtns').querySelector('[data-next]').onclick=()=>{sfx.tap();hush();res()};
+    $('dlgBtns').innerHTML=`<button class="pill sun choice" type="button" data-next>${esc(o.btn||'Next')} ›</button>`;
+    $('dlgBtns').querySelector('[data-next]').onclick=()=>{sfx.tap();res()};
   });
 }
 async function talk(who,lines){for(const l of lines){if(Array.isArray(l))await line(l[0],l[1]);else await line(who,l)}}
 function choose(who,text,opts){
   return new Promise(res=>{
     setSpeaker(who);const t=fill(text);$('dlgText').textContent=t;$('dlgExtra').innerHTML='';
-    $('dlgBtns').innerHTML=`<button class="pill ghost" type="button" data-read>Read it to me</button>`+opts.map(o=>`<button class="pill choice ${o.star?'star':''}" type="button" data-k="${o.key}">${o.star?'<b>!</b> ':''}${esc(fill(o.label))}</button>`).join('');
-    bindRead(t+'. '+opts.map(o=>fill(o.label)).join('. Or, '));
-    $('dlgBtns').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{sfx.tap();hush();res(b.dataset.k)});
+    $('dlgBtns').innerHTML=opts.map(o=>`<button class="pill choice ${o.star?'star':''}" type="button" data-k="${o.key}">${o.star?'<b>!</b> ':''}${esc(fill(o.label))}</button>`).join('');
+    $('dlgBtns').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{sfx.tap();res(b.dataset.k)});
   });
 }
 function got(who,text,label,icon){sfx.gift();return line(who,text,{extra:`<div class="got">${icon}<span>${esc(fill(label))}</span></div>`,btn:'Yay'})}
-function dlgClose(){$('dlg').hidden=true;hush()}
+function dlgClose(){$('dlg').hidden=true}
 function ask(who,text,q){
   return new Promise(res=>{
     setSpeaker(who);const t=fill(text);$('dlgText').textContent=t;let tries=0;
     const opts=near(q.ans,q.extra||[]);
     $('dlgExtra').innerHTML=`<div class="eq">${eqHTML(q.eq)}</div>${q.pic?`<div class="pic" data-pic hidden>${picHTML(q.pic,q)}</div>`:''}<div class="answers">${opts.map(v=>`<button class="ans" type="button" data-v="${v}">${v}</button>`).join('')}</div>`;
-    $('dlgBtns').innerHTML=`<button class="pill ghost" type="button" data-read>Read it to me</button>${q.pic?'<button class="pill" type="button" data-showpic>Show me a picture</button>':''}`;
-    bindRead(t);bindPic($('dlgExtra'));
+    $('dlgBtns').innerHTML=q.pic?'<button class="pill" type="button" data-showpic>Show me a picture</button>':'';
+    bindPic($('dlgExtra'));
     const showPic=()=>{const p=$('dlgExtra').querySelector('[data-pic]');if(p)p.hidden=false;const b=$('dlgBtns').querySelector('[data-showpic]');if(b)b.remove()};
     const sp=$('dlgBtns').querySelector('[data-showpic]');if(sp)sp.onclick=()=>{sfx.tap();showPic()};
     $('dlgExtra').querySelectorAll('.ans').forEach(b=>b.onclick=()=>{
@@ -995,7 +991,7 @@ function play(cfg){
     nextQ();
   });
 }
-function endPlay(result){const r=playRes;playRes=null;R=null;hush();if(result){S.rounds++;S.time=(S.time+1)%4;save()}show(null);hud();r&&r(result)}
+function endPlay(result){const r=playRes;playRes=null;R=null;if(result){S.rounds++;S.time=(S.time+1)%4;save()}show(null);hud();r&&r(result)}
 const meterHTML=()=>Array.from({length:R.hp},(_,i)=>`<i class="${i>=R.meter?'gone':''}">${CLOUD()}</i>`).join('');
 function renderSide(msg){
   const c=R.cfg,pal=S.pal?`<div class="pal">${face(S.pal)}</div>`:'';
@@ -1032,7 +1028,6 @@ function renderQ(){
   if(!picShown)h+='<button class="pill" type="button" data-help>Show me a picture</button>';
   if(!needCut&&R.zaps>0)h+=`<button class="pill" type="button" data-zap>Zap a wrong one (${R.zaps})</button>`;
   if(R.hops>0&&!st&&!needCut)h+=`<button class="pill" type="button" data-hop>Bun hop: new question (${R.hops})</button>`;
-  h+='<button class="pill" type="button" data-read>Read it to me</button>';
   if(S.devSkip)h+='<button class="pill" type="button" data-skip>Skip to end</button>';
   h+='</div>';
   const card=$('card');card.innerHTML=h;
@@ -1043,7 +1038,6 @@ function renderQ(){
   on('[data-help]',()=>{sfx.tap();R.pic=true;$('pic').hidden=false;card.querySelector('[data-help]').remove()});
   on('[data-zap]',()=>{const c=cur();const wrong=[...card.querySelectorAll('.ans')].filter(b=>!b.disabled&&String(b.dataset.v)!==String(c.ans));if(!wrong.length)return;const b=pick(wrong);b.disabled=true;b.classList.add('zapped');R.zaps--;sfx.zap();burst(b);const z=card.querySelector('[data-zap]');if(R.zaps>0)z.textContent=`Zap a wrong one (${R.zaps})`;else z.remove()});
   on('[data-hop]',()=>{R.hops--;sfx.tap();R.q=R.cfg.gen();R.step=0;R.tries=0;R.pic=!!R.q.show;bubble('Boing! Bun hopped in a new one.');renderQ()});
-  on('[data-read]',()=>say((q.say||q.prompt)+(st?'. '+st.prompt+'. '+st.eq.replace('?','what'):'')));
   on('[data-skip]',()=>{if(R.cfg.foe)R.meter=0;else R.i=R.cfg.n;finish()});
 }
 function answer(v,btn){
